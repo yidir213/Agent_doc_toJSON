@@ -103,6 +103,9 @@ async def extract_pdfs(
             results.append(result.model_dump())
         except Exception as exc:
             raise HTTPException(status_code=500, detail=f"Failed processing {file.filename}: {exc}") from exc
+        finally:
+            if pdf_path.exists():
+                pdf_path.unlink()
 
     return JSONResponse(
         {
@@ -147,8 +150,12 @@ async def sendgrid_inbound_parse(
             continue
 
         pdf_path = await save_upload(attachment)
-        result = run_pdf_extraction(str(pdf_path), attachment.filename or pdf_path.name, request)
-        results.append(result.model_dump())
+        try:
+            result = run_pdf_extraction(str(pdf_path), attachment.filename or pdf_path.name, request)
+            results.append(result.model_dump())
+        finally:
+            if pdf_path.exists():
+                pdf_path.unlink()
 
     return {
         "status": "success",
